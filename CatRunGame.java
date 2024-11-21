@@ -16,6 +16,7 @@ public class CatRunGame extends JPanel implements ActionListener {
 
     private JFrame frame; // 게임 프레임
     private JButton retryButton; // 다시하기 버튼
+    private int coins = 0; // 코인
 
     public CatRunGame(JFrame frame) {
         this.frame = frame;
@@ -58,12 +59,13 @@ public class CatRunGame extends JPanel implements ActionListener {
         g.fillRect(100, catY, 50, 50);
 
         // 장애물 그리기
-        g.setColor(Color.BLACK);
+        g.setColor(Color.RED);
         g.fillRect(obstacleX, 300, 50, 50);
 
         // 점수 표시
         g.setColor(Color.BLACK);
         g.drawString("Score: " + score, 10, 10);
+        g.drawString("Coins: " + coins, 10, 30); // 코인 표시
     }
 
     @Override
@@ -97,15 +99,28 @@ public class CatRunGame extends JPanel implements ActionListener {
 
     private void increaseDifficulty() {
         // 일정 점수마다 장애물 속도 증가
-        if (score % 30 == 0) {
-            speed += 5; // 장애물 속도 증가
+        if (score % 50 == 0 && speed < 15) { // 장애물 속도가 너무 빠르게 증가하지 않도록 제한
+            speed += 1; // 장애물 속도 증가
         }
     }
 
     private void gameOver() {
         timer.stop(); // 게임 루프 중지
         retryButton.setVisible(true); // 다시하기 버튼 표시
-        JOptionPane.showMessageDialog(this, "Game Over! Final Score: " + score);
+        coins = calculateCoins(score); // 최종 점수에 맞는 코인 계산
+        JOptionPane.showMessageDialog(this, "Game Over! Final Score: " + score + "\nCoins Earned: " + coins);
+    }
+
+    private int calculateCoins(int finalScore) {
+        if (finalScore <= 30) {
+            return 5; // 0~30점일 때 5코인
+        } else if (finalScore <= 60) {
+            return 15; // 31~60점일 때 15코인
+        } else if (finalScore <= 90) {
+            return 30; // 61~90점일 때 30코인
+        } else {
+            return 50; // 91점 이상일 때 50코인
+        }
     }
 
     private void resetGame() {
@@ -116,6 +131,7 @@ public class CatRunGame extends JPanel implements ActionListener {
         jumpVelocity = 0;
         score = 0;
         speed = 5; // 장애물 속도 초기화
+        coins = 0; // 코인 초기화
 
         retryButton.setVisible(false); // 다시하기 버튼 숨기기
         timer.start(); // 게임 루프 재시작
