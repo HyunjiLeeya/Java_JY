@@ -4,147 +4,218 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+import java.util.LinkedList;
+
+import java.util.Random;
 
 public class CatRunGame extends JPanel implements ActionListener {
-    private int catY = 250; // 고양이의 Y 위치
-    private int obstacleX = 800; // 장애물의 X 위치
-    private boolean jumping = false; // 점프 상태
-    private int jumpVelocity = 0; // 점프 속도
-    private int score = 0; // 점수
-    private int speed = 5; // 장애물 이동 속도
-    private Timer timer; // 게임 루프 타이머
+    private int catY;
+    private int jumpVelocity = 0;
+    private boolean jumping = false;
+    private int score = 0;
+    private int speed;
+    private LinkedList<Integer> obstacleX = new LinkedList<>();
+    private Timer timer;
+    private JButton retryButton;
+    private int coins = 0;
+    private Random random = new Random();
+    private int screenWidth, screenHeight;
+    private int groundY;
+    private int catSize;
+    private int gravity;
+    private int speedIncrementDelay = 1000;
+    private Image obstacleImage;
+    private Image walkingCatImage;  // 걷는 고양이 이미지
+    private Image jumpingCatImage;  // 뛰는 고양이 이미지
+    private int obstacleWidth = 80;
+    private int obstacleHeight = 130;
 
-    private JFrame frame; // 게임 프레임
-    private JButton retryButton; // 다시하기 버튼
-    private int coins = 0; // 코인
+    public CatRunGame() {
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        screenWidth = screenSize.width;
+        screenHeight = screenSize.height;
 
-    public CatRunGame(JFrame frame) {
-        this.frame = frame;
+        groundY = (int) (screenHeight * 0.75);
+        catSize = (int) (screenHeight * 0.1);
+        gravity = screenHeight / 600;
 
-        // 게임 타이머 설정
+        catY = groundY - catSize;
+
+        speed = screenWidth / 200;
+
+        jumpVelocity = -screenHeight / 40;
+
+        initializeObstacles();
+
         timer = new Timer(20, this);
         timer.start();
 
-        // 키보드 입력 처리
         addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyPressed(java.awt.event.KeyEvent e) {
                 if (e.getKeyCode() == java.awt.event.KeyEvent.VK_SPACE && !jumping) {
                     jumping = true;
-                    jumpVelocity = -15; // 점프 속도
+                    jumpVelocity = -screenHeight / 40;
                 }
             }
         });
         setFocusable(true);
 
-        // 다시하기 버튼 설정
         retryButton = new JButton("다시하기");
-        retryButton.setBounds(350, 150, 100, 50);
         retryButton.setVisible(false);
+        retryButton.setBackground(new Color(255, 255, 255));
+        retryButton.setForeground(new Color(0, 0, 0));
+        retryButton.setBorderPainted(true);
+        retryButton.setFont(new Font("Arial", Font.BOLD, 18));
+
         retryButton.addActionListener(e -> resetGame());
+
         this.setLayout(null);
         this.add(retryButton);
+
+        updateRetryButtonPosition();
+
+        try {
+            File imageFile = new File("C:/Users/yunni/OneDrive/바탕 화면/Uni/2학기/Computer Programming (월)/기말고사/장애물.png");
+            obstacleImage = ImageIO.read(imageFile); // 장애물 이미지 로드
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            walkingCatImage = ImageIO.read(new File("C:/Users/yunni/OneDrive/바탕 화면/Uni/2학기/Computer Programming (월)/기말고사/거ㄷ.jpg"));  // 걷는 고양이 이미지 경로
+            jumpingCatImage = ImageIO.read(new File("C:/Users/yunni/OneDrive/바탕 화면/Uni/2학기/Computer Programming (월)/기말고사/뛰기.jpg"));  // 뛰는 고양이 이미지 경로
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initializeObstacles() {
+        obstacleX.clear();
+        int startX = screenWidth;
+        for (int i = 0; i < 5; i++) {
+            startX += random.nextInt(screenWidth / 4) + screenWidth / 4;
+            obstacleX.add(startX);
+        }
+    }
+
+    private void updateRetryButtonPosition() {
+        int buttonWidth = 200;
+        int buttonHeight = 60;
+        retryButton.setBounds((screenWidth - buttonWidth) / 2, (screenHeight - buttonHeight) / 2, buttonWidth, buttonHeight);
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        // 배경 색상
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, getWidth(), getHeight());
 
-        // 고양이 그리기
-        g.setColor(Color.ORANGE);
-        g.fillRect(100, catY, 50, 50);
+        g.setColor(Color.LIGHT_GRAY);
+        g.fillRect(0, groundY, screenWidth, screenHeight - groundY);
 
-        // 장애물 그리기
-        g.setColor(Color.RED);
-        g.fillRect(obstacleX, 300, 50, 50);
+        // 점프 상태에 따라 고양이 이미지를 다르게 표시
+        if (jumping) {
+            if (jumpingCatImage != null) {
+                g.drawImage(jumpingCatImage, 100, catY, catSize, catSize, this);
+            }
+        } else {
+            if (walkingCatImage != null) {
+                g.drawImage(walkingCatImage, 100, catY, catSize, catSize, this);
+            }
+        }
 
-        // 점수 표시
+        for (int x : obstacleX) {
+            g.drawImage(obstacleImage, x, groundY - obstacleHeight, obstacleWidth, obstacleHeight, this);
+        }
+
         g.setColor(Color.BLACK);
-        g.drawString("Score: " + score, 10, 10);
-        g.drawString("Coins: " + coins, 10, 30); // 코인 표시
+        g.drawString("Score: " + score, 10, 30);
+        g.drawString("Coins: " + coins, 10, 50);
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        // 장애물 이동
-        obstacleX -= speed; // 속도에 따라 장애물이 이동
-        if (obstacleX < -50) {
-            obstacleX = 800; // 장애물 위치 초기화
-            score += 10; // 장애물 통과 시 점수 증가
-            increaseDifficulty(); // 난이도 증가
+        for (int i = 0; i < obstacleX.size(); i++) {
+            obstacleX.set(i, obstacleX.get(i) - speed);
         }
 
-        // 점프 처리
+        if (!obstacleX.isEmpty() && obstacleX.getFirst() < -obstacleWidth) {
+            obstacleX.removeFirst();
+            int newObstacleX = obstacleX.getLast() + random.nextInt(screenWidth / 4) + screenWidth / 4;
+            obstacleX.add(newObstacleX);
+            score += 10;
+            coins += calculateCoins(score);
+        }
+
+        if (score % speedIncrementDelay == 0 && score != 0) {
+            speed += 10;
+            speedIncrementDelay += 1000;
+        }
+
         if (jumping) {
             catY += jumpVelocity;
-            jumpVelocity += 1; // 중력 효과
-            if (catY >= 250) { // 바닥에 닿으면 점프 종료
-                catY = 250;
+            jumpVelocity += gravity;
+            if (catY >= groundY - catSize) {
+                catY = groundY - catSize;
                 jumping = false;
             }
         }
 
-        // 충돌 감지
-        if (obstacleX < 150 && obstacleX > 100 && catY >= 250) {
-            gameOver();
+        for (int x : obstacleX) {
+            if (x < 150 && x + obstacleWidth > 100 && catY + catSize > groundY - obstacleHeight) {
+                gameOver();
+                return;
+            }
         }
 
-        // 화면 다시 그리기
         repaint();
     }
 
-    private void increaseDifficulty() {
-        // 일정 점수마다 장애물 속도 증가
-        if (score % 50 == 0 && speed < 15) { // 장애물 속도가 너무 빠르게 증가하지 않도록 제한
-            speed += 1; // 장애물 속도 증가
-        }
-    }
-
     private void gameOver() {
-        timer.stop(); // 게임 루프 중지
-        retryButton.setVisible(true); // 다시하기 버튼 표시
-        coins = calculateCoins(score); // 최종 점수에 맞는 코인 계산
+        timer.stop();
+        retryButton.setVisible(true);
         JOptionPane.showMessageDialog(this, "Game Over! Final Score: " + score + "\nCoins Earned: " + coins);
     }
 
     private int calculateCoins(int finalScore) {
         if (finalScore <= 30) {
-            return 5; // 0~30점일 때 5코인
+            return 5;
         } else if (finalScore <= 60) {
-            return 15; // 31~60점일 때 15코인
+            return 15;
         } else if (finalScore <= 90) {
-            return 30; // 61~90점일 때 30코인
+            return 30;
         } else {
-            return 50; // 91점 이상일 때 50코인
+            return 50;
         }
     }
 
     private void resetGame() {
-        // 게임 상태 초기화
-        catY = 250;
-        obstacleX = 800;
+        catY = groundY - catSize;
+        initializeObstacles();
         jumping = false;
         jumpVelocity = 0;
         score = 0;
-        speed = 5; // 장애물 속도 초기화
-        coins = 0; // 코인 초기화
-
-        retryButton.setVisible(false); // 다시하기 버튼 숨기기
-        timer.start(); // 게임 루프 재시작
-        repaint(); // 화면 갱신
+        speed = screenWidth / 200;
+        coins = 0;
+        retryButton.setVisible(false);
+        timer.start();
+        repaint();
     }
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Cat Run Game");
-        CatRunGame game = new CatRunGame(frame);
+        CatRunGame game = new CatRunGame();
         frame.add(game);
-        frame.setSize(800, 400);
+
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
 }
+
 
